@@ -1,0 +1,61 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    master_ssh_user: your_master_user
+    slave_ssh_user: your_slave_user
+    jenkins_key_url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+
+  tasks:
+    - name: Update package lists
+      apt:
+        update_cache: yes
+
+    - name: Install OpenJDK 11
+      apt:
+        name: openjdk-11-jre
+        state: present
+
+    - name: Download Jenkins key
+      get_url:
+        url: "{{ jenkins_key_url }}"
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      lineinfile:
+        path: /etc/apt/sources.list.d/jenkins.list
+        line: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        create: yes
+
+    - name: Update package lists (again)
+      apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Generate SSH key pair
+      openssh_keypair:
+        path: ~/.ssh/id_rsa
+        size: 2048
+
+    - name: Ensure ~/.ssh directory exists
+      file:
+        path: ~/.ssh
+        state: directory
+        mode: '0700'
+
+    - name: Copy SSH public key from master to slave
+      authorized_key:
+        user: "{{ slave_ssh_user }}"
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        path: ~/.ssh/authorized_keys
+        exclusive: true
+
+    - name: Check Jenkins status
+      systemd:
+        name: jenkins
+        state: started
+        enabled: yes
