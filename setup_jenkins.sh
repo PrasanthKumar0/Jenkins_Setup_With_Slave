@@ -40,3 +40,4 @@ run_remote_command <master_username> <master_ip> "sudo su - jenkins -c 'ssh <sla
 
 # Exit Jenkins User Shell on Master
 run_remote_command <master_username> <master_ip> "exit"
+.
